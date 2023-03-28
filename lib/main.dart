@@ -1,25 +1,36 @@
 import 'package:BrainTalk/chat.dart';
+import 'package:BrainTalk/repo/chat_message_data.dart';
+import 'package:BrainTalk/repo/chat_message_repo.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:macos_ui/macos_ui.dart';
 
+import 'bloc/chat_message_bloc.dart';
+
 void main() {
-  runApp(const App());
+  WidgetsFlutterBinding.ensureInitialized();
+  runApp(App());
 }
 
 class App extends StatelessWidget {
-  const App({super.key});
+  App({super.key});
+
+  final chatMessageDataProvider = ChatMessageDataProvider();
 
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
-    return MacosApp(
-      title: 'BrainTalk',
-      theme: MacosThemeData.light(),
-      darkTheme: MacosThemeData.dark(),
-      themeMode: ThemeMode.system,
-      home: const MainView(),
-      debugShowCheckedModeBanner: false,
+    return RepositoryProvider(
+      create: (context) => ChatMessageRepository(chatMessageDataProvider),
+      child: MacosApp(
+        title: 'BrainTalk',
+        theme: MacosThemeData.light(),
+        darkTheme: MacosThemeData.dark(),
+        themeMode: ThemeMode.system,
+        home: const MainView(),
+        debugShowCheckedModeBanner: false,
+      ),
     );
   }
 }
@@ -72,9 +83,13 @@ class _MainViewState extends State<MainView> {
         ),
         child: IndexedStack(
           index: _pageIndex,
-          children: const [
-            HomePage(),
-            ChatPage(),
+          children: [
+            const HomePage(),
+            BlocProvider<ChatMessageBloc>(
+              create: (context) =>
+                  ChatMessageBloc(context.read<ChatMessageRepository>()),
+              child: const ChatPage(),
+            ),
           ],
         ),
       ),
