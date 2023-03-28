@@ -16,3 +16,5 @@ class ChatMessageSendEvent extends ChatMessageEvent {
 }
 
 class ChatMessageGetRecentEvent extends ChatMessageEvent {}
+
+class ChatMessageClearAllEvent extends ChatMessageEvent {}

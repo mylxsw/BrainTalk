@@ -1,6 +1,5 @@
-import 'dart:convert';
+import 'dart:async';
 import 'dart:io';
-import 'dart:math';
 
 import 'package:BrainTalk/bloc/chat_message_bloc.dart';
 import 'package:BrainTalk/helper/helper.dart';
@@ -10,7 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_chat_ui/flutter_chat_ui.dart';
 import 'package:macos_ui/macos_ui.dart';
-import 'package:flutter_chat_types/flutter_chat_types.dart' as types;
+import 'package:flutter_chat_types/flutter_chat_types.dart' as t;
 import 'package:http/http.dart' as http;
 import 'package:open_filex/open_filex.dart';
 import 'package:path_provider/path_provider.dart';
@@ -23,12 +22,16 @@ class ChatPage extends StatefulWidget {
 }
 
 class _ChatPageState extends State<ChatPage> {
-  final _user = const types.User(id: '1');
+  final _user = const t.User(id: '1');
 
   @override
   void initState() {
     super.initState();
     context.read<ChatMessageBloc>().add(ChatMessageGetRecentEvent());
+
+    // Timer.periodic(const Duration(seconds: 10), (timer) {
+    //   context.read<ChatMessageBloc>().add(ChatMessageGetRecentEvent());
+    // });
   }
 
   @override
@@ -38,6 +41,16 @@ class _ChatPageState extends State<ChatPage> {
         title: const Text('Chat'),
         actions: [
           ToolBarIconButton(
+            label: '清空消息',
+            icon: const MacosIcon(CupertinoIcons.trash),
+            showLabel: false,
+            tooltipMessage: '清空消息',
+            onPressed: () {
+              BlocProvider.of<ChatMessageBloc>(context)
+                  .add(ChatMessageClearAllEvent());
+            },
+          ),
+          ToolBarIconButton(
             label: 'Toggle Sidebar',
             icon: const MacosIcon(CupertinoIcons.sidebar_left),
             showLabel: false,
@@ -45,7 +58,7 @@ class _ChatPageState extends State<ChatPage> {
             onPressed: () {
               MacosWindowScope.of(context).toggleSidebar();
             },
-          )
+          ),
         ],
       ),
       children: [
@@ -58,17 +71,18 @@ class _ChatPageState extends State<ChatPage> {
                   return Material(
                     child: Chat(
                       messages: state.messages,
-                      onSendPressed: _onSendPressed(context),
+                      onSendPressed: _buildSendPressedHandler(context),
                       user: _user,
                       theme: _buildChatTheme(context),
-                      onAttachmentPressed:
-                          _onAttachmentPressed(context.read<ChatMessageBloc>()),
+                      onAttachmentPressed: _buildAttachmentPressedHandler(
+                          context.read<ChatMessageBloc>()),
                       inputOptions: const InputOptions(
                         sendButtonVisibilityMode:
                             SendButtonVisibilityMode.always,
                       ),
-                      onPreviewDataFetched: _handlePreviewDataFetched(state),
-                      onMessageTap: _handleMessageTap(state),
+                      onPreviewDataFetched:
+                          _buildPreviewDataFetchedHandler(state),
+                      onMessageTap: _buildMessageTapHandler(state),
                       usePreviewData: true,
                       showUserAvatars: true,
                       showUserNames: true,
@@ -85,6 +99,120 @@ class _ChatPageState extends State<ChatPage> {
         )
       ],
     );
+  }
+
+  void Function(t.PartialText) _buildSendPressedHandler(BuildContext context) {
+    return (t.PartialText message) {
+      context.read<ChatMessageBloc>().add(ChatMessageSendEvent(t.TextMessage(
+            author: _user,
+            createdAt: DateTime.now().millisecondsSinceEpoch,
+            id: randomId(),
+            text: message.text,
+          )));
+    };
+  }
+
+  Function() _buildAttachmentPressedHandler(ChatMessageBloc bloc) {
+    return () async {
+      final result = await FilePicker.platform.pickFiles();
+
+      if (result != null && result.files.isNotEmpty) {
+        final filePath =
+            await copyExternalFileToAppDocs(result.files.single.path!);
+
+        if (['jpg', 'png', 'jpeg', 'gif']
+            .contains(result.files.single.extension)) {
+          var imageFile = File(filePath);
+          var imageData = await imageFile.readAsBytes();
+          var image = await decodeImageFromList(imageData);
+
+          bloc.add(
+            ChatMessageSendEvent(
+              t.ImageMessage(
+                author: _user,
+                createdAt: DateTime.now().millisecondsSinceEpoch,
+                height: image.height.toDouble(),
+                id: randomId(),
+                name: result.files.single.name,
+                size: imageData.length,
+                uri: filePath,
+                width: image.width.toDouble(),
+              ),
+            ),
+          );
+        } else {
+          bloc.add(ChatMessageSendEvent(t.FileMessage(
+            author: _user,
+            id: randomId(),
+            createdAt: DateTime.now().millisecondsSinceEpoch,
+            name: result.files.single.name,
+            size: result.files.single.size,
+            uri: result.files.single.path!,
+          )));
+        }
+      }
+    };
+  }
+
+  void Function(t.TextMessage, t.PreviewData) _buildPreviewDataFetchedHandler(
+      ChatMessageLoaded state) {
+    return (t.TextMessage message, t.PreviewData previewData) {
+      final index =
+          state.messages.indexWhere((element) => element.id == message.id);
+      setState(() {
+        state.messages[index] = (state.messages[index] as t.TextMessage)
+            .copyWith(previewData: previewData);
+      });
+    };
+  }
+
+  void Function(BuildContext _, t.Message message) _buildMessageTapHandler(
+      ChatMessageLoaded state) {
+    return (_, message) async {
+      if (message is t.FileMessage) {
+        var localPath = message.uri;
+
+        if (message.uri.startsWith('http')) {
+          try {
+            final index = state.messages
+                .indexWhere((element) => element.id == message.id);
+            final updatedMessage =
+                (state.messages[index] as t.FileMessage).copyWith(
+              isLoading: true,
+            );
+
+            setState(() {
+              state.messages[index] = updatedMessage;
+            });
+
+            final client = http.Client();
+            final request = await client.get(Uri.parse(message.uri));
+            final bytes = request.bodyBytes;
+            final documentsDir =
+                (await getApplicationDocumentsDirectory()).path;
+            localPath = '$documentsDir/${message.name}';
+
+            if (!File(localPath).existsSync()) {
+              final file = File(localPath);
+              await file.writeAsBytes(bytes);
+            }
+          } finally {
+            final index = state.messages
+                .indexWhere((element) => element.id == message.id);
+            final updatedMessage =
+                (state.messages[index] as t.FileMessage).copyWith(
+              isLoading: null,
+            );
+
+            setState(() {
+              state.messages[index] = updatedMessage;
+            });
+          }
+        }
+
+        await OpenFilex.open(localPath);
+      }
+    };
   }
 
   DefaultChatTheme _buildChatTheme(BuildContext context) {
@@ -154,122 +282,6 @@ class _ChatPageState extends State<ChatPage> {
         ),
       );
     }
-  }
-
-  void Function(types.PartialText) _onSendPressed(BuildContext context) {
-    return (types.PartialText message) {
-      context
-          .read<ChatMessageBloc>()
-          .add(ChatMessageSendEvent(types.TextMessage(
-            author: _user,
-            createdAt: DateTime.now().millisecondsSinceEpoch,
-            id: randomId(),
-            text: message.text,
-          )));
-    };
-  }
-
-  Function() _onAttachmentPressed(ChatMessageBloc bloc) {
-    return () async {
-      final result = await FilePicker.platform.pickFiles();
-
-      if (result != null && result.files.isNotEmpty) {
-        final filePath =
-            await copyExternalFileToAppDocs(result.files.single.path!);
-
-        if (['jpg', 'png', 'jpeg', 'gif']
-            .contains(result.files.single.extension)) {
-          var imageFile = File(filePath);
-          var imageData = await imageFile.readAsBytes();
-          var image = await decodeImageFromList(imageData);
-
-          bloc.add(
-            ChatMessageSendEvent(
-              types.ImageMessage(
-                author: _user,
-                createdAt: DateTime.now().millisecondsSinceEpoch,
-                height: image.height.toDouble(),
-                id: randomId(),
-                name: result.files.single.name,
-                size: imageData.length,
-                uri: filePath,
-                width: image.width.toDouble(),
-              ),
-            ),
-          );
-        } else {
-          bloc.add(ChatMessageSendEvent(types.FileMessage(
-            author: _user,
-            id: randomId(),
-            createdAt: DateTime.now().millisecondsSinceEpoch,
-            name: result.files.single.name,
-            size: result.files.single.size,
-            uri: result.files.single.path!,
-          )));
-        }
-      }
-    };
-  }
-
-  void Function(types.TextMessage message, types.PreviewData previewData)
-      _handlePreviewDataFetched(ChatMessageLoaded state) {
-    return (types.TextMessage message, types.PreviewData previewData) {
-      final index =
-          state.messages.indexWhere((element) => element.id == message.id);
-      setState(() {
-        state.messages[index] = (state.messages[index] as types.TextMessage)
-            .copyWith(previewData: previewData);
-      });
-    };
-  }
-
-  void Function(BuildContext _, types.Message message) _handleMessageTap(
-      ChatMessageLoaded state) {
-    return (_, message) async {
-      if (message is types.FileMessage) {
-        var localPath = message.uri;
-
-        if (message.uri.startsWith('http')) {
-          try {
-            final index = state.messages
-                .indexWhere((element) => element.id == message.id);
-            final updatedMessage =
-                (state.messages[index] as types.FileMessage).copyWith(
-              isLoading: true,
-            );
-
-            setState(() {
-              state.messages[index] = updatedMessage;
-            });
-
-            final client = http.Client();
-            final request = await client.get(Uri.parse(message.uri));
-            final bytes = request.bodyBytes;
-            final documentsDir =
-                (await getApplicationDocumentsDirectory()).path;
-            localPath = '$documentsDir/${message.name}';
-
-            if (!File(localPath).existsSync()) {
-              final file = File(localPath);
-              await file.writeAsBytes(bytes);
-            }
-          } finally {
-            final index = state.messages
-                .indexWhere((element) => element.id == message.id);
-            final updatedMessage =
-                (state.messages[index] as types.FileMessage).copyWith(
-              isLoading: null,
-            );
-
-            setState(() {
-              state.messages[index] = updatedMessage;
-            });
-          }
-        }
-
-        await OpenFilex.open(localPath);
-      }
-    };
   }
 }
 

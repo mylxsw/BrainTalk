@@ -15,9 +15,29 @@ class ChatMessageDataProvider {
   }
 
   Future<void> sendMessage(types.Message message) async {
-    print("sendMessage: $message");
     messages!.insert(0, message);
+    saveMessages();
+  }
 
+  Future<void> updateMessage(String id, types.Message message) async {
+    if (messages == null) {
+      return;
+    }
+
+    final index = messages!.indexWhere((element) => element.id == id);
+    if (index > -1) {
+      messages![index] = message;
+    }
+
+    await saveMessages();
+  }
+
+  Future<void> clearMessages() async {
+    messages = [];
+    await saveMessages();
+  }
+
+  Future<void> saveMessages() async {
     await writeFile('chat.json', jsonEncode(messages));
   }
 
