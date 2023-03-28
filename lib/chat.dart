@@ -55,21 +55,24 @@ class _ChatPageState extends State<ChatPage> {
               buildWhen: (previous, current) => current is ChatMessageLoaded,
               builder: (context, state) {
                 if (state is ChatMessageLoaded) {
-                  return Chat(
-                    messages: state.messages,
-                    onSendPressed: _onSendPressed(context),
-                    user: _user,
-                    theme: _buildChatTheme(context),
-                    onAttachmentPressed:
-                        _onAttachmentPressed(context.read<ChatMessageBloc>()),
-                    inputOptions: const InputOptions(
-                      sendButtonVisibilityMode: SendButtonVisibilityMode.always,
+                  return Material(
+                    child: Chat(
+                      messages: state.messages,
+                      onSendPressed: _onSendPressed(context),
+                      user: _user,
+                      theme: _buildChatTheme(context),
+                      onAttachmentPressed:
+                          _onAttachmentPressed(context.read<ChatMessageBloc>()),
+                      inputOptions: const InputOptions(
+                        sendButtonVisibilityMode:
+                            SendButtonVisibilityMode.always,
+                      ),
+                      onPreviewDataFetched: _handlePreviewDataFetched(state),
+                      onMessageTap: _handleMessageTap(state),
+                      usePreviewData: true,
+                      showUserAvatars: true,
+                      showUserNames: true,
                     ),
-                    onPreviewDataFetched: _handlePreviewDataFetched(state),
-                    onMessageTap: _handleMessageTap(state),
-                    usePreviewData: true,
-                    showUserAvatars: true,
-                    showUserNames: true,
                   );
                 } else {
                   return const Center(

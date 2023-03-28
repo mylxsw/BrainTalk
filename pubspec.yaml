@@ -19,6 +19,7 @@ dependencies:
   open_filex: ^4.3.2
   path_provider: ^2.0.14
   uuid: ^3.0.7
+  chat_gpt_sdk: 2.0.6
 
 dev_dependencies:
   flutter_test:

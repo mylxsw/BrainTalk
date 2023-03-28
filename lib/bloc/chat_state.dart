@@ -8,9 +8,11 @@ class ChatMessageInitial extends ChatMessageState {}
 class ChatMessageLoading extends ChatMessageState {}
 
 class ChatMessageLoaded extends ChatMessageState {
-  final List<types.Message> messages;
+  final List<types.Message> _messages;
 
-  ChatMessageLoaded(this.messages);
+  ChatMessageLoaded(this._messages);
+
+  get messages => _messages;
 }
 
 class ChatMessageError extends ChatMessageState {

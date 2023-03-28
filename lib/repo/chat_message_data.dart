@@ -1,7 +1,6 @@
 import 'dart:convert';
 
 import 'package:BrainTalk/helper/helper.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_chat_types/flutter_chat_types.dart' as types;
 
 class ChatMessageDataProvider {
@@ -12,7 +11,7 @@ class ChatMessageDataProvider {
       await loadMessages();
     }
 
-    return messages!;
+    return messages ?? [];
   }
 
   Future<void> sendMessage(types.Message message) async {
