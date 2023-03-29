@@ -8,8 +8,8 @@ class SettingRepository {
   SettingRepository(this._dataProvider) {
     _dataProvider.loadSettings();
 
-    Timer.periodic(const Duration(seconds: 5), (timer) {
-      _dataProvider.saveSettings();
+    Timer.periodic(const Duration(seconds: 5), (timer) async {
+      await _dataProvider.saveSettings();
     });
   }
 

@@ -8,6 +8,7 @@ class SettingDataProvider {
 
   Future<void> loadSettings() async {
     final content = await readFile('settings.json');
+    _settings.clear();
     _settings.addAll(jsonDecode(content) as Map<String, String>);
     _dirty = false;
   }
