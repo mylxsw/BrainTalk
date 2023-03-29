@@ -41,13 +41,46 @@ class _ChatPageState extends State<ChatPage> {
         title: const Text('Chat'),
         actions: [
           ToolBarIconButton(
-            label: '清空消息',
-            icon: const MacosIcon(CupertinoIcons.trash),
+            label: '清空',
+            icon: const MacosIcon(
+              CupertinoIcons.trash,
+              color: Colors.red,
+            ),
             showLabel: false,
-            tooltipMessage: '清空消息',
+            tooltipMessage: '清空',
+            onPressed: () {
+              showMacosAlertDialog(
+                context: context,
+                builder: (_) => MacosAlertDialog(
+                  appIcon: const FlutterLogo(size: 56),
+                  title: const Text('确认清空所有消息？'),
+                  message: const Text('注意：该操作不可恢复'),
+                  primaryButton: PushButton(
+                    buttonSize: ButtonSize.large,
+                    child: const Text('确定'),
+                    onPressed: () {
+                      BlocProvider.of<ChatMessageBloc>(context)
+                          .add(ChatMessageClearAllEvent());
+                      Navigator.of(context).pop();
+                    },
+                  ),
+                  secondaryButton: PushButton(
+                      isSecondary: true,
+                      buttonSize: ButtonSize.large,
+                      child: const Text('取消'),
+                      onPressed: () => Navigator.of(context).pop()),
+                ),
+              );
+            },
+          ),
+          ToolBarIconButton(
+            label: '重置上下文',
+            icon: const MacosIcon(CupertinoIcons.refresh),
+            showLabel: false,
+            tooltipMessage: '重置上下文',
             onPressed: () {
               BlocProvider.of<ChatMessageBloc>(context)
-                  .add(ChatMessageClearAllEvent());
+                  .add(ChatMessageBreakContextEvent());
             },
           ),
           ToolBarIconButton(
@@ -235,12 +268,16 @@ class _ChatPageState extends State<ChatPage> {
           ),
         ),
         receivedMessageBodyTextStyle:
-            defaultTheme.receivedMessageBodyTextStyle.copyWith(fontSize: 14),
+            defaultTheme.receivedMessageBodyTextStyle.copyWith(
+          fontSize: 14,
+          color: Colors.white,
+        ),
         sentMessageBodyTextStyle:
             defaultTheme.sentMessageBodyTextStyle.copyWith(
           fontSize: 14,
         ),
         primaryColor: const Color.fromARGB(255, 23, 44, 74),
+        secondaryColor: const Color.fromARGB(255, 29, 32, 36),
         inputContainerDecoration: const BoxDecoration(
           border:
               Border(top: BorderSide(color: Color.fromARGB(255, 29, 31, 33))),
