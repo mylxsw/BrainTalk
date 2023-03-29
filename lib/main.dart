@@ -15,16 +15,22 @@ import 'package:macos_ui/macos_ui.dart';
 import 'bloc/chat_message_bloc.dart';
 import 'helper/constant.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(App());
+
+  final settingProvider = SettingDataProvider();
+  await settingProvider.loadSettings();
+
+  runApp(App(
+    settingProvider: settingProvider,
+  ));
 }
 
 class App extends StatelessWidget {
-  App({super.key});
+  App({super.key, required this.settingProvider});
 
   final _chatDataProvider = ChatMessageDataProvider();
-  final _settingProvider = SettingDataProvider();
+  SettingDataProvider settingProvider;
 
   // This widget is the root of your application.
   @override
@@ -38,15 +44,15 @@ class App extends StatelessWidget {
           ),
           RepositoryProvider<OpenAIRepository>(
             create: (context) => OpenAIRepository(
-              _settingProvider.getDefault(
+              settingProvider.getDefault(
                 settingOpenAIAPIToken,
                 Platform.environment['OPENAI_TOKEN'] ?? '',
               ),
-              proxy: _settingProvider.getDefault(settingOpenAIProxy, ''),
+              proxy: settingProvider.getDefault(settingOpenAIProxy, ''),
             ),
           ),
           RepositoryProvider<SettingRepository>(
-            create: (context) => SettingRepository(_settingProvider),
+            create: (context) => SettingRepository(settingProvider),
           ),
         ],
         child: MacosApp(
