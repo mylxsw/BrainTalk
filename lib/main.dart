@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:BrainTalk/bloc/notify_bloc.dart';
 import 'package:BrainTalk/chat.dart';
 import 'package:BrainTalk/repo/chat_message_data.dart';
 import 'package:BrainTalk/repo/chat_message_repo.dart';
@@ -125,14 +126,21 @@ class _MainViewState extends State<MainView> {
           index: _pageIndex,
           children: [
             const HomePage(),
-            BlocProvider<ChatMessageBloc>(
-              create: (context) => ChatMessageBloc(
-                context.read<ChatMessageRepository>(),
-                context.read<OpenAIRepository2>(),
-                context.read<SettingRepository>(),
-              ),
+            MultiBlocProvider(
+              providers: [
+                BlocProvider(
+                  create: (context) => ChatMessageBloc(
+                    context.read<ChatMessageRepository>(),
+                    context.read<OpenAIRepository2>(),
+                    context.read<SettingRepository>(),
+                  ),
+                ),
+                BlocProvider(
+                  create: (context) => NotifyBloc(),
+                ),
+              ],
               child: const ChatPage(),
-            ),
+            )
           ],
         ),
       ),
@@ -200,6 +208,10 @@ class HomePage extends StatelessWidget {
                                     .read<OpenAIRepository2>()
                                     .supportModels(),
                                 builder: (context, snapshot) {
+                                  var model = context
+                                      .read<SettingRepository>()
+                                      .stringDefault(
+                                          settingOpenAIModel, 'gpt-3.5-turbo');
                                   return MacosPopupButton(
                                     items: snapshot.data == null
                                         ? <MacosPopupMenuItem<String>>[]
@@ -211,10 +223,11 @@ class HomePage extends StatelessWidget {
                                               ),
                                             )
                                             .toList(),
-                                    value: context
-                                        .read<SettingRepository>()
-                                        .stringDefault(settingOpenAIModel,
-                                            'gpt-3.5-turbo'),
+                                    value: snapshot.data!.indexWhere(
+                                                (e) => e.id == model) >
+                                            -1
+                                        ? model
+                                        : snapshot.data!.first.id,
                                     onChanged: (value) {
                                       context
                                           .read<SettingRepository>()

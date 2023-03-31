@@ -10,3 +10,5 @@ class NotifyFiredEvent extends NotifyEvent {
 
   NotifyFiredEvent(this.title, this.body, this.type);
 }
+
+class NotifyResetEvent extends NotifyEvent {}

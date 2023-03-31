@@ -9,5 +9,9 @@ class NotifyBloc extends Bloc<NotifyEvent, NotifyState> {
     on<NotifyFiredEvent>((event, emit) {
       emit(NotifyFired(event.title, event.body, event.type));
     });
+
+    on<NotifyResetEvent>((event, emit) {
+      emit(NotifyInitial());
+    });
   }
 }

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:BrainTalk/bloc/chat_message_bloc.dart';
+import 'package:BrainTalk/bloc/notify_bloc.dart';
 import 'package:BrainTalk/helper/helper.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/cupertino.dart';
@@ -97,30 +98,63 @@ class _ChatPageState extends State<ChatPage> {
       children: [
         ContentArea(
           builder: (context, scrollController) {
-            return BlocBuilder<ChatMessageBloc, ChatMessageState>(
+            return BlocConsumer<ChatMessageBloc, ChatMessageState>(
               buildWhen: (previous, current) => current is ChatMessageLoaded,
+              listener: (context, state) {
+                if (state is ChatMessageLoaded && state.error != null) {
+                  var notifier = context.read<NotifyBloc>();
+
+                  notifier.add(NotifyResetEvent());
+                  notifier.add(NotifyFiredEvent('提示', state.error, 'error'));
+                }
+              },
               builder: (context, state) {
                 if (state is ChatMessageLoaded) {
                   return Material(
-                    child: Chat(
-                      messages: state.messages,
-                      onSendPressed: _buildSendPressedHandler(context),
-                      user: _user,
-                      theme: _buildChatTheme(context),
-                      onAttachmentPressed: _buildAttachmentPressedHandler(
-                          context.read<ChatMessageBloc>()),
-                      inputOptions: const InputOptions(
-                        sendButtonVisibilityMode:
-                            SendButtonVisibilityMode.always,
-                      ),
-                      onPreviewDataFetched:
-                          _buildPreviewDataFetchedHandler(state),
-                      onMessageTap: _buildMessageTapHandler(state),
-                      usePreviewData: true,
-                      showUserAvatars: true,
-                      showUserNames: true,
-                      l10n: const ChatL10nZhCN(),
-                    ),
+                    child: Column(children: [
+                      BlocBuilder<NotifyBloc, NotifyState>(
+                          builder: (context, state) {
+                        if (state is NotifyFired) {
+                          return Container(
+                            color: Colors.red,
+                            alignment: Alignment.center,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 5,
+                            ),
+                            child: Text(
+                              '${state.title}: ${state.body}',
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                color: Colors.white,
+                              ),
+                            ),
+                          );
+                        } else {
+                          return Container();
+                        }
+                      }),
+                      Expanded(
+                          child: Chat(
+                        messages: state.messages,
+                        onSendPressed: _buildSendPressedHandler(context),
+                        user: _user,
+                        theme: _buildChatTheme(context),
+                        onAttachmentPressed: _buildAttachmentPressedHandler(
+                            context.read<ChatMessageBloc>()),
+                        inputOptions: const InputOptions(
+                          sendButtonVisibilityMode:
+                              SendButtonVisibilityMode.always,
+                        ),
+                        onPreviewDataFetched:
+                            _buildPreviewDataFetchedHandler(state),
+                        onMessageTap: _buildMessageTapHandler(state),
+                        usePreviewData: true,
+                        showUserAvatars: true,
+                        showUserNames: true,
+                        l10n: const ChatL10nZhCN(),
+                      )),
+                    ]),
                   );
                 } else {
                   return const Center(
@@ -143,6 +177,8 @@ class _ChatPageState extends State<ChatPage> {
             id: randomId(),
             text: message.text,
           )));
+
+      context.read<NotifyBloc>().add(NotifyResetEvent());
     };
   }
 

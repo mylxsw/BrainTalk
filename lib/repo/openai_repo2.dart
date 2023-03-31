@@ -13,7 +13,10 @@ class OpenAIRepository2 {
 
   Future<List<Model>> supportModels() async {
     var models = await OpenAI.instance.model.list();
-    return models.map((e) => Model(e.id, e.ownedBy)).toList();
+    return models
+        .where((e) => e.ownedBy == 'openai')
+        .map((e) => Model(e.id, e.ownedBy))
+        .toList();
   }
 
   Future<void> chatStream(

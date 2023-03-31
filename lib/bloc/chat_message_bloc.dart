@@ -142,6 +142,9 @@ class ChatMessageBloc extends Bloc<ChatMessageEvent, ChatMessageState> {
 
         waitMessage = null;
       }
+
+      emit(ChatMessageLoaded(
+          await _chatMsgRepo.getRecentMessages(lastAliveTime())));
     } catch (e) {
       if (waitMessage != null) {
         await _chatMsgRepo.updateMessage(
@@ -153,10 +156,20 @@ class ChatMessageBloc extends Bloc<ChatMessageEvent, ChatMessageState> {
           ),
         );
       }
+
+      emit(ChatMessageLoaded(
+        await _chatMsgRepo.getRecentMessages(lastAliveTime()),
+        error: _resolveErrorMessage(e),
+      ));
+    }
+  }
+
+  String _resolveErrorMessage(dynamic e) {
+    if (e is RequestFailedException) {
+      return "${e.statusCode}: ${e.message}";
     }
 
-    emit(ChatMessageLoaded(
-        await _chatMsgRepo.getRecentMessages(lastAliveTime())));
+    return e.toString();
   }
 
   List<OpenAIChatCompletionChoiceMessageModel> _buildRobotRequestContext(
