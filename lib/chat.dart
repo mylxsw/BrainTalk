@@ -119,6 +119,7 @@ class _ChatPageState extends State<ChatPage> {
                       usePreviewData: true,
                       showUserAvatars: true,
                       showUserNames: true,
+                      l10n: const ChatL10nZhCN(),
                     ),
                   );
                 } else {

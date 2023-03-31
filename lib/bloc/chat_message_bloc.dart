@@ -2,8 +2,10 @@ import 'package:BrainTalk/helper/constant.dart';
 import 'package:BrainTalk/helper/helper.dart';
 import 'package:BrainTalk/repo/chat_message_repo.dart';
 import 'package:BrainTalk/repo/openai_repo.dart';
+import 'package:BrainTalk/repo/openai_repo2.dart';
 import 'package:BrainTalk/repo/settings_repo.dart';
 import 'package:bloc/bloc.dart';
+import 'package:dart_openai/openai.dart';
 import 'package:meta/meta.dart';
 import 'package:flutter_chat_types/flutter_chat_types.dart' as types;
 
@@ -12,7 +14,7 @@ part 'chat_state.dart';
 
 class ChatMessageBloc extends Bloc<ChatMessageEvent, ChatMessageState> {
   final ChatMessageRepository _chatMsgRepo;
-  final OpenAIRepository _openAIRepo;
+  final OpenAIRepository2 _openAIRepo;
   final SettingRepository _settingRepo;
 
   final _contextAliveTimeMillis = 1000 * 60 * 30;
@@ -140,7 +142,7 @@ class ChatMessageBloc extends Bloc<ChatMessageEvent, ChatMessageState> {
 
         waitMessage = null;
       }
-    } finally {
+    } catch (e) {
       if (waitMessage != null) {
         await _chatMsgRepo.updateMessage(
           waitMessage.id,
@@ -151,13 +153,13 @@ class ChatMessageBloc extends Bloc<ChatMessageEvent, ChatMessageState> {
           ),
         );
       }
-
-      emit(ChatMessageLoaded(
-          await _chatMsgRepo.getRecentMessages(lastAliveTime())));
     }
+
+    emit(ChatMessageLoaded(
+        await _chatMsgRepo.getRecentMessages(lastAliveTime())));
   }
 
-  List<Map<String, String>> _buildRobotRequestContext(
+  List<OpenAIChatCompletionChoiceMessageModel> _buildRobotRequestContext(
     List<types.Message> messages,
     event,
   ) {
@@ -176,14 +178,16 @@ class ChatMessageBloc extends Bloc<ChatMessageEvent, ChatMessageState> {
     var contextMessages = recentMessages.reversed
         .whereType<types.TextMessage>()
         .map((e) => e.author.id == 'robot'
-            ? {"role": "assistant", "content": e.text}
-            : {"role": "user", "content": e.text})
+            ? OpenAIChatCompletionChoiceMessageModel(
+                role: OpenAIChatMessageRole.assistant, content: e.text)
+            : OpenAIChatCompletionChoiceMessageModel(
+                role: OpenAIChatMessageRole.user, content: e.text))
         .toList();
 
-    contextMessages.add(Map.of({
-      "role": "user",
-      "content": (event.message as types.TextMessage).text,
-    }));
+    contextMessages.add(OpenAIChatCompletionChoiceMessageModel(
+      role: OpenAIChatMessageRole.user,
+      content: (event.message as types.TextMessage).text,
+    ));
 
     if (contextMessages.length > 10) {
       contextMessages = contextMessages.sublist(contextMessages.length - 10);

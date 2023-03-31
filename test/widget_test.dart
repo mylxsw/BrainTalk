@@ -5,17 +5,26 @@
 // gestures. You can also use WidgetTester to find child widgets in the widget
 // tree, read text, and verify that the values of widget properties are correct.
 
+import 'dart:io';
+
+import 'package:BrainTalk/repo/openai_repo2.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:macos_ui/macos_ui.dart';
 
 import 'package:BrainTalk/main.dart';
 
 void main() {
-  testWidgets('App is built with a MacosWindow parent widget',
-      (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const App());
+  testWidgets(
+    'Test',
+    (WidgetTester tester) async {
+      var repo = OpenAIRepository2(Platform.environment['OPENAI_TOKEN']!);
+      var models = await repo.supportModels();
 
-    expect(find.byType(MacosWindow), findsOneWidget);
-  });
+      models.forEach((element) {
+        print(element);
+      });
+
+      expect(true, models.isNotEmpty);
+    },
+  );
 }

@@ -4,13 +4,17 @@ import 'package:BrainTalk/chat.dart';
 import 'package:BrainTalk/repo/chat_message_data.dart';
 import 'package:BrainTalk/repo/chat_message_repo.dart';
 import 'package:BrainTalk/repo/openai_repo.dart';
+import 'package:BrainTalk/repo/openai_repo2.dart';
 import 'package:BrainTalk/repo/settings_data.dart';
 import 'package:BrainTalk/repo/settings_repo.dart';
+import 'package:BrainTalk/theme.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:macos_ui/macos_ui.dart';
+import 'package:provider/provider.dart';
 
 import 'bloc/chat_message_bloc.dart';
 import 'helper/constant.dart';
@@ -42,26 +46,31 @@ class App extends StatelessWidget {
               _chatDataProvider,
             ),
           ),
-          RepositoryProvider<OpenAIRepository>(
-            create: (context) => OpenAIRepository(
+          RepositoryProvider<OpenAIRepository2>(
+            create: (context) => OpenAIRepository2(
               settingProvider.getDefault(
                 settingOpenAIAPIToken,
                 Platform.environment['OPENAI_TOKEN'] ?? '',
               ),
-              proxy: settingProvider.getDefault(settingOpenAIProxy, ''),
             ),
           ),
           RepositoryProvider<SettingRepository>(
             create: (context) => SettingRepository(settingProvider),
           ),
         ],
-        child: MacosApp(
-          title: 'BrainTalk',
-          theme: MacosThemeData.light(),
-          darkTheme: MacosThemeData.dark(),
-          themeMode: ThemeMode.system,
-          home: const MainView(),
-          debugShowCheckedModeBanner: false,
+        child: ChangeNotifierProvider(
+          create: (context) => AppTheme(),
+          builder: (context, _) {
+            final appTheme = context.watch<AppTheme>();
+            return MacosApp(
+              title: 'BrainTalk',
+              theme: MacosThemeData.light(),
+              darkTheme: MacosThemeData.dark(),
+              themeMode: appTheme.mode,
+              home: const MainView(),
+              debugShowCheckedModeBanner: false,
+            );
+          },
         ));
   }
 }
@@ -119,7 +128,7 @@ class _MainViewState extends State<MainView> {
             BlocProvider<ChatMessageBloc>(
               create: (context) => ChatMessageBloc(
                 context.read<ChatMessageRepository>(),
-                context.read<OpenAIRepository>(),
+                context.read<OpenAIRepository2>(),
                 context.read<SettingRepository>(),
               ),
               child: const ChatPage(),
@@ -158,71 +167,130 @@ class HomePage extends StatelessWidget {
               builder: (context, scrollController) {
                 return Container(
                   padding: const EdgeInsets.all(20),
-                  child: Column(
-                    children: [
-                      Row(
-                        children: [
-                          const Text('API Token:'),
-                          const SizedBox(width: 20),
-                          Expanded(
-                            child: MacosTextField(
-                              controller: TextEditingController(
-                                text: context
-                                    .read<SettingRepository>()
-                                    .stringDefault(settingOpenAIAPIToken, ''),
+                  child: SingleChildScrollView(
+                    child: Column(
+                      children: [
+                        Row(
+                          children: [
+                            const Text('API Token:'),
+                            const SizedBox(width: 20),
+                            Expanded(
+                              child: MacosTextField(
+                                controller: TextEditingController(
+                                  text: context
+                                      .read<SettingRepository>()
+                                      .stringDefault(settingOpenAIAPIToken, ''),
+                                ),
+                                onChanged: (value) {
+                                  context
+                                      .read<SettingRepository>()
+                                      .set(settingOpenAIAPIToken, value);
+                                },
                               ),
+                            ),
+                          ],
+                        ),
+                        Row(
+                          children: [
+                            const Text('Model:'),
+                            const SizedBox(width: 20),
+                            Expanded(
+                              child: FutureBuilder(
+                                future: context
+                                    .read<OpenAIRepository2>()
+                                    .supportModels(),
+                                builder: (context, snapshot) {
+                                  return MacosPopupButton(
+                                    items: snapshot.data == null
+                                        ? <MacosPopupMenuItem<String>>[]
+                                        : snapshot.data!
+                                            .map(
+                                              (e) => MacosPopupMenuItem<String>(
+                                                value: e.id,
+                                                child: Text(e.id),
+                                              ),
+                                            )
+                                            .toList(),
+                                    value: context
+                                        .read<SettingRepository>()
+                                        .stringDefault(settingOpenAIModel,
+                                            'gpt-3.5-turbo'),
+                                    onChanged: (value) {
+                                      context
+                                          .read<SettingRepository>()
+                                          .set(settingOpenAIModel, value!);
+                                    },
+                                  );
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+                        Row(
+                          children: [
+                            const Text('Temperature:'),
+                            const SizedBox(width: 20),
+                            SizedBox(
+                              width: 100,
+                              child: MacosTextField(
+                                controller: TextEditingController(
+                                  text: context
+                                      .read<SettingRepository>()
+                                      .stringDefault(
+                                          settingOpenAITemperature, '1.0'),
+                                ),
+                                onChanged: (value) {
+                                  context
+                                      .read<SettingRepository>()
+                                      .set(settingOpenAITemperature, value);
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+                        Row(
+                          children: [
+                            const Text('System Theme'),
+                            const SizedBox(width: 8),
+                            MacosRadioButton<ThemeMode>(
+                              groupValue: context.watch<AppTheme>().mode,
+                              value: ThemeMode.system,
                               onChanged: (value) {
-                                context
-                                    .read<SettingRepository>()
-                                    .set(settingOpenAIAPIToken, value);
+                                context.read<AppTheme>().mode = value!;
                               },
                             ),
-                          ),
-                        ],
-                      ),
-                      Row(
-                        children: [
-                          const Text('Model:'),
-                          const SizedBox(width: 20),
-                          Expanded(
-                            child: MacosTextField(
-                              controller: TextEditingController(
-                                text: context
-                                    .read<SettingRepository>()
-                                    .stringDefault(
-                                        settingOpenAIModel, "gpt-3.5-turbo"),
-                              ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            const Text('Light Theme'),
+                            const SizedBox(width: 24),
+                            MacosRadioButton<ThemeMode>(
+                              groupValue: context.watch<AppTheme>().mode,
+                              value: ThemeMode.light,
                               onChanged: (value) {
-                                context
-                                    .read<SettingRepository>()
-                                    .set(settingOpenAIModel, value);
+                                context.read<AppTheme>().mode = value!;
                               },
                             ),
-                          ),
-                        ],
-                      ),
-                      Row(
-                        children: [
-                          const Text('Temperature:'),
-                          const SizedBox(width: 20),
-                          Expanded(
-                            child: MacosTextField(
-                              controller: TextEditingController(
-                                text: context
-                                    .read<SettingRepository>()
-                                    .stringDefault(
-                                        settingOpenAITemperature, '1.0'),
-                              ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            const Text('Dark Theme'),
+                            const SizedBox(width: 26),
+                            MacosRadioButton<ThemeMode>(
+                              groupValue: context.watch<AppTheme>().mode,
+                              value: ThemeMode.dark,
                               onChanged: (value) {
-                                context
-                                    .read<SettingRepository>()
-                                    .set(settingOpenAITemperature, value);
+                                context.read<AppTheme>().mode = value!;
                               },
                             ),
-                          ),
-                        ],
-                      ),
-                    ],
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
                 );
               },

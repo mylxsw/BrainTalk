@@ -64,7 +64,11 @@ class ChatMessageDataProvider {
 
   Future<void> _loadMessages() async {
     // final resp = await rootBundle.loadString('assets/messages.json');
-    final resp = await readFile('chat.json');
+    var resp = await readFile('chat.json');
+    if (resp == '') {
+      resp = '[]';
+    }
+
     _messages = (jsonDecode(resp) as List)
         .map((e) => types.Message.fromJson(e as Map<String, dynamic>))
         .toList();

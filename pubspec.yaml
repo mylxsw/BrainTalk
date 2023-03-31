@@ -25,6 +25,9 @@ dependencies:
     path: ../flutter_link_previewer
   flutter_chat_types:
     path: ../flutter_chat_types
+  provider: ^6.0.5
+  dart_openai: 
+    path: ../openai
 
 dev_dependencies:
   flutter_test:

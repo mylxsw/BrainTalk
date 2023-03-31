@@ -26,7 +26,7 @@ Future<String> readFile(String path) async {
     final file = File('${directory.path}/$path');
     return await file.readAsString();
   } catch (e) {
-    return '[]';
+    return '';
   }
 }
 

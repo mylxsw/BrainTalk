@@ -7,7 +7,10 @@ class SettingDataProvider {
   bool _dirty = false;
 
   Future<void> loadSettings() async {
-    final content = await readFile('settings.json');
+    var content = await readFile('settings.json');
+    if (content == '') {
+      content = '{}';
+    }
     _settings.clear();
     _settings.addAll((jsonDecode(content) as Map<String, dynamic>)
         .map((key, value) => MapEntry(key, value.toString())));
