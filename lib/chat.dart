@@ -38,131 +38,149 @@ class _ChatPageState extends State<ChatPage> {
   @override
   Widget build(BuildContext context) {
     return MacosScaffold(
-      toolBar: ToolBar(
-        title: const Text('Chat'),
-        actions: [
-          ToolBarIconButton(
-            label: '清空',
-            icon: const MacosIcon(
-              CupertinoIcons.trash,
-              color: Colors.red,
-            ),
-            showLabel: false,
-            tooltipMessage: '清空',
-            onPressed: () {
-              showMacosAlertDialog(
-                context: context,
-                builder: (_) => MacosAlertDialog(
-                  appIcon: const FlutterLogo(size: 56),
-                  title: const Text('确认清空所有消息？'),
-                  message: const Text('注意：该操作不可恢复'),
-                  primaryButton: PushButton(
-                    buttonSize: ButtonSize.large,
-                    child: const Text('确定'),
-                    onPressed: () {
-                      BlocProvider.of<ChatMessageBloc>(context)
-                          .add(ChatMessageClearAllEvent());
-                      Navigator.of(context).pop();
-                    },
-                  ),
-                  secondaryButton: PushButton(
-                      isSecondary: true,
-                      buttonSize: ButtonSize.large,
-                      child: const Text('取消'),
-                      onPressed: () => Navigator.of(context).pop()),
-                ),
-              );
-            },
-          ),
-          ToolBarIconButton(
-            label: '重置上下文',
-            icon: const MacosIcon(CupertinoIcons.refresh),
-            showLabel: false,
-            tooltipMessage: '重置上下文',
-            onPressed: () {
-              BlocProvider.of<ChatMessageBloc>(context)
-                  .add(ChatMessageBreakContextEvent());
-            },
-          ),
-          ToolBarIconButton(
-            label: 'Toggle Sidebar',
-            icon: const MacosIcon(CupertinoIcons.sidebar_left),
-            showLabel: false,
-            tooltipMessage: 'Toggle Sidebar',
-            onPressed: () {
-              MacosWindowScope.of(context).toggleSidebar();
-            },
-          ),
-        ],
-      ),
+      toolBar: _buildToolBars(context),
       children: [
         ContentArea(
           builder: (context, scrollController) {
-            return BlocConsumer<ChatMessageBloc, ChatMessageState>(
-              buildWhen: (previous, current) => current is ChatMessageLoaded,
-              listener: (context, state) {
-                if (state is ChatMessageLoaded && state.error != null) {
-                  var notifier = context.read<NotifyBloc>();
-
-                  notifier.add(NotifyResetEvent());
-                  notifier.add(NotifyFiredEvent('提示', state.error, 'error'));
-                }
-              },
-              builder: (context, state) {
-                if (state is ChatMessageLoaded) {
-                  return Material(
-                    child: Column(children: [
-                      BlocBuilder<NotifyBloc, NotifyState>(
-                          builder: (context, state) {
-                        if (state is NotifyFired) {
-                          return Container(
-                            color: Colors.red,
-                            alignment: Alignment.center,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 5,
-                            ),
-                            child: Text(
-                              '${state.title}: ${state.body}',
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                color: Colors.white,
-                              ),
-                            ),
-                          );
-                        } else {
-                          return Container();
-                        }
-                      }),
-                      Expanded(
-                          child: Chat(
-                        messages: state.messages,
-                        onSendPressed: _buildSendPressedHandler(context),
-                        user: _user,
-                        theme: _buildChatTheme(context),
-                        onAttachmentPressed: _buildAttachmentPressedHandler(
-                            context.read<ChatMessageBloc>()),
-                        inputOptions: const InputOptions(
-                          sendButtonVisibilityMode:
-                              SendButtonVisibilityMode.always,
-                        ),
-                        onPreviewDataFetched:
-                            _buildPreviewDataFetchedHandler(state),
-                        onMessageTap: _buildMessageTapHandler(state),
-                        usePreviewData: true,
-                        showUserAvatars: true,
-                        showUserNames: true,
-                        l10n: const ChatL10nZhCN(),
-                      )),
-                    ]),
-                  );
-                } else {
-                  return const Center(
-                    child: CircularProgressIndicator(),
-                  );
-                }
-              },
+            return Material(
+              child: Column(
+                children: [
+                  _buildNotifyBox(),
+                  Expanded(
+                    child: _buildChatBox(),
+                  ),
+                ],
+              ),
             );
+          },
+        ),
+      ],
+    );
+  }
+
+  BlocConsumer<ChatMessageBloc, ChatMessageState> _buildChatBox() {
+    return BlocConsumer<ChatMessageBloc, ChatMessageState>(
+      buildWhen: (prv, cur) => cur is ChatMessageLoaded,
+      listener: (context, state) {
+        if (state is ChatMessageLoaded && state.error != null) {
+          var notifier = context.read<NotifyBloc>();
+
+          notifier.add(NotifyResetEvent());
+          notifier.add(NotifyFiredEvent(
+            '提示',
+            state.error,
+            'error',
+          ));
+        }
+      },
+      builder: (context, state) {
+        if (state is ChatMessageLoaded) {
+          return Chat(
+            messages: state.messages,
+            onSendPressed: _buildSendPressedHandler(context),
+            user: _user,
+            theme: _buildChatTheme(context),
+            onAttachmentPressed:
+                _buildAttachmentPressedHandler(context.read<ChatMessageBloc>()),
+            inputOptions: const InputOptions(
+              sendButtonVisibilityMode: SendButtonVisibilityMode.always,
+            ),
+            onPreviewDataFetched: _buildPreviewDataFetchedHandler(state),
+            onMessageTap: _buildMessageTapHandler(state),
+            usePreviewData: true,
+            showUserAvatars: true,
+            showUserNames: true,
+            l10n: const ChatL10nZhCN(),
+          );
+        } else {
+          return const Center(
+            child: CircularProgressIndicator(),
+          );
+        }
+      },
+    );
+  }
+
+  BlocBuilder<NotifyBloc, NotifyState> _buildNotifyBox() {
+    return BlocBuilder<NotifyBloc, NotifyState>(
+      builder: (context, state) {
+        if (state is NotifyFired) {
+          return Container(
+            color: Colors.red,
+            alignment: Alignment.center,
+            padding: const EdgeInsets.symmetric(
+              horizontal: 10,
+              vertical: 5,
+            ),
+            child: Text(
+              '${state.title}: ${state.body}',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: Colors.white,
+              ),
+            ),
+          );
+        } else {
+          return Container();
+        }
+      },
+    );
+  }
+
+  ToolBar _buildToolBars(BuildContext context) {
+    return ToolBar(
+      title: const Text('Chat'),
+      actions: [
+        ToolBarIconButton(
+          label: '清空',
+          icon: const MacosIcon(
+            CupertinoIcons.trash,
+            color: Colors.red,
+          ),
+          showLabel: false,
+          tooltipMessage: '清空',
+          onPressed: () {
+            showMacosAlertDialog(
+              context: context,
+              builder: (_) => MacosAlertDialog(
+                appIcon: const FlutterLogo(size: 56),
+                title: const Text('确认清空所有消息？'),
+                message: const Text('注意：该操作不可恢复'),
+                primaryButton: PushButton(
+                  buttonSize: ButtonSize.large,
+                  child: const Text('确定'),
+                  onPressed: () {
+                    BlocProvider.of<ChatMessageBloc>(context)
+                        .add(ChatMessageClearAllEvent());
+                    Navigator.of(context).pop();
+                  },
+                ),
+                secondaryButton: PushButton(
+                    isSecondary: true,
+                    buttonSize: ButtonSize.large,
+                    child: const Text('取消'),
+                    onPressed: () => Navigator.of(context).pop()),
+              ),
+            );
+          },
+        ),
+        ToolBarIconButton(
+          label: '重置上下文',
+          icon: const MacosIcon(CupertinoIcons.refresh),
+          showLabel: false,
+          tooltipMessage: '重置上下文',
+          onPressed: () {
+            BlocProvider.of<ChatMessageBloc>(context)
+                .add(ChatMessageBreakContextEvent());
+          },
+        ),
+        ToolBarIconButton(
+          label: 'Toggle Sidebar',
+          icon: const MacosIcon(CupertinoIcons.sidebar_left),
+          showLabel: false,
+          tooltipMessage: 'Toggle Sidebar',
+          onPressed: () {
+            MacosWindowScope.of(context).toggleSidebar();
           },
         ),
       ],

@@ -1,121 +1,62 @@
-// import 'dart:async';
-// import 'dart:convert';
+import 'dart:async';
 
-// import 'package:chat_gpt_sdk/chat_gpt_sdk.dart';
+import 'package:dart_openai/openai.dart';
 
-// class OpenAIRepository {
-//   OpenAI? _openAI;
+class OpenAIRepository {
+  OpenAIRepository(String token) {
+    OpenAI.apiKey = token;
+    OpenAI.baseUrl = 'https://api.openai.com';
+    OpenAI.showLogs = false;
+  }
 
-//   OpenAIRepository(String openAIToken, {proxy = ''}) {
-//     _openAI = OpenAI.instance.build(
-//       token: openAIToken,
-//       baseOption: HttpSetup(
-//         sendTimeout: const Duration(seconds: 30),
-//         receiveTimeout: const Duration(seconds: 60),
-//         connectTimeout: const Duration(seconds: 10),
-//         proxy: proxy,
-//       ),
-//     );
-//   }
+  Future<List<Model>> supportModels() async {
+    var models = await OpenAI.instance.model.list();
+    return models
+        .where((e) => e.ownedBy == 'openai')
+        .map((e) => Model(e.id, e.ownedBy))
+        .toList();
+  }
 
-//   Future<void> chatStream(
-//     List<Map<String, String>> messages,
-//     void Function(String data) onData, {
-//     int maxToken = 1000,
-//     double temperature = 1.0,
-//     user = 'user',
-//     model = 'gpt-3.5-turbo',
-//   }) async {
-//     final request = ChatCompleteText(
-//       model: model,
-//       maxToken: maxToken,
-//       temperature: temperature,
-//       messages: messages,
-//       user: user,
-//     );
+  Future<void> chatStream(
+    List<OpenAIChatCompletionChoiceMessageModel> messages,
+    void Function(String data) onData, {
+    int maxToken = 1000,
+    double temperature = 1.0,
+    user = 'user',
+    model = 'gpt-3.5-turbo',
+  }) async {
+    var completer = Completer<void>();
 
-//     var completer = Completer<void>();
-//     _openAI!.onChatCompletionSSE(
-//         request: request,
-//         complete: (it) {
-//           it.map((it) => utf8.decode(it)).listen(
-//             (data) {
-//               final raw = data.replaceAll("data: ", '').trim();
-//               if (raw.isNotEmpty) {
-//                 try {
-//                   final mJson = json.decode(raw);
-//                   if (mJson is Map) {
-//                     String? txt =
-//                         (mJson['choices'] as List).last['delta']['content'];
-//                     if (txt != null) {
-//                       onData(txt);
-//                     }
-//                   }
-//                 } catch (e) {
-//                   if (e is! FormatException) {
-//                     print("error: $e");
-//                   }
-//                 }
-//               }
-//             },
-//             onDone: () {
-//               print('received done');
-//               completer.complete();
-//             },
-//             cancelOnError: true,
-//           ).onError((e) {
-//             completer.completeError(e);
-//           });
-//         });
+    try {
+      var chatStream = OpenAI.instance.chat.createStream(
+        model: model,
+        messages: messages,
+        maxTokens: maxToken,
+        temperature: temperature,
+        user: user,
+      );
 
-//     return completer.future;
-//   }
+      chatStream.listen(
+        (event) {
+          for (var element in event.choices) {
+            if (element.delta.content != null) {
+              onData(element.delta.content!);
+            }
+          }
+        },
+        onDone: () => completer.complete(),
+        onError: (e) => completer.completeError(e),
+        cancelOnError: true,
+      ).onError((e) {
+        completer.completeError(e);
+      });
+    } catch (e) {
+      completer.completeError(e);
+    }
 
-//   Future<List<ChatReplyMessage>> chat(
-//     List<Map<String, String>> messages, {
-//     int maxToken = 1000,
-//     double temperature = 1.0,
-//     user = 'user',
-//     model = 'gpt-3.5-turbo',
-//   }) async {
-//     final request = ChatCompleteText(
-//       model: model,
-//       maxToken: maxToken,
-//       temperature: temperature,
-//       messages: messages,
-//       user: user,
-//     );
-
-//     final response = await _openAI!.onChatCompletion(request: request);
-//     if (response != null) {
-//       return response.choices
-//           .map((e) => ChatReplyMessage(
-//               index: e.index,
-//               content: e.message.content,
-//               role: e.message.role,
-//               finishReason: e.finishReason))
-//           .toList();
-//     }
-
-//     return [];
-//   }
-
-//   Future<List<Model>> supportModels() async {
-//     var resp = await _openAI!.listModel();
-//     // resp.data.where((e) => e.ownerBy == 'openai').forEach((element) {
-//     //   print([
-//     //     element.id,
-//     //     element.object,
-//     //     element.ownerBy,
-//     //     jsonEncode(element.permission),
-//     //   ]);
-//     // });
-//     return resp.data
-//         // .where((e) => e.ownerBy == 'openai')
-//         .map((e) => Model(e.id, e.ownerBy))
-//         .toList();
-//   }
-// }
+    return completer.future;
+  }
+}
 
 class Model {
   final String id;

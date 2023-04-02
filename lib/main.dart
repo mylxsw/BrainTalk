@@ -5,14 +5,11 @@ import 'package:BrainTalk/chat.dart';
 import 'package:BrainTalk/repo/chat_message_data.dart';
 import 'package:BrainTalk/repo/chat_message_repo.dart';
 import 'package:BrainTalk/repo/openai_repo.dart';
-import 'package:BrainTalk/repo/openai_repo2.dart';
 import 'package:BrainTalk/repo/settings_data.dart';
 import 'package:BrainTalk/repo/settings_repo.dart';
 import 'package:BrainTalk/theme.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:macos_ui/macos_ui.dart';
 import 'package:provider/provider.dart';
@@ -47,8 +44,8 @@ class App extends StatelessWidget {
               _chatDataProvider,
             ),
           ),
-          RepositoryProvider<OpenAIRepository2>(
-            create: (context) => OpenAIRepository2(
+          RepositoryProvider<OpenAIRepository>(
+            create: (context) => OpenAIRepository(
               settingProvider.getDefault(
                 settingOpenAIAPIToken,
                 Platform.environment['OPENAI_TOKEN'] ?? '',
@@ -131,7 +128,7 @@ class _MainViewState extends State<MainView> {
                 BlocProvider(
                   create: (context) => ChatMessageBloc(
                     context.read<ChatMessageRepository>(),
-                    context.read<OpenAIRepository2>(),
+                    context.read<OpenAIRepository>(),
                     context.read<SettingRepository>(),
                   ),
                 ),
@@ -205,7 +202,7 @@ class HomePage extends StatelessWidget {
                             Expanded(
                               child: FutureBuilder(
                                 future: context
-                                    .read<OpenAIRepository2>()
+                                    .read<OpenAIRepository>()
                                     .supportModels(),
                                 builder: (context, snapshot) {
                                   var model = context

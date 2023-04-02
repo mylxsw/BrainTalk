@@ -7,7 +7,7 @@
 
 import 'dart:io';
 
-import 'package:BrainTalk/repo/openai_repo2.dart';
+import 'package:BrainTalk/repo/openai_repo.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:macos_ui/macos_ui.dart';
 
@@ -17,7 +17,7 @@ void main() {
   testWidgets(
     'Test',
     (WidgetTester tester) async {
-      var repo = OpenAIRepository2(Platform.environment['OPENAI_TOKEN']!);
+      var repo = OpenAIRepository(Platform.environment['OPENAI_TOKEN']!);
       var models = await repo.supportModels();
 
       models.forEach((element) {

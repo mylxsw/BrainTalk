@@ -2,7 +2,7 @@ import 'package:BrainTalk/helper/constant.dart';
 import 'package:BrainTalk/helper/helper.dart';
 import 'package:BrainTalk/repo/chat_message_repo.dart';
 import 'package:BrainTalk/repo/openai_repo.dart';
-import 'package:BrainTalk/repo/openai_repo2.dart';
+import 'package:BrainTalk/repo/openai_repo.dart';
 import 'package:BrainTalk/repo/settings_repo.dart';
 import 'package:bloc/bloc.dart';
 import 'package:dart_openai/openai.dart';
@@ -14,7 +14,7 @@ part 'chat_state.dart';
 
 class ChatMessageBloc extends Bloc<ChatMessageEvent, ChatMessageState> {
   final ChatMessageRepository _chatMsgRepo;
-  final OpenAIRepository2 _openAIRepo;
+  final OpenAIRepository _openAIRepo;
   final SettingRepository _settingRepo;
 
   final _contextAliveTimeMillis = 1000 * 60 * 30;
@@ -93,25 +93,7 @@ class ChatMessageBloc extends Bloc<ChatMessageEvent, ChatMessageState> {
       emit(ChatMessageLoaded(messages));
 
       if (event.message is types.TextMessage) {
-        // // 请求机器人应答
-        // final replies = await _openAIRepository
-        //     .chat(_buildRobotRequestContext(messages, event));
-        // if (replies.isNotEmpty) {
-        //   for (var element in replies) {
-        //     await _chatMessageRepository.updateMessage(
-        //       waitMessage.id,
-        //       types.TextMessage(
-        //         id: randomId(),
-        //         author: const types.User(id: 'robot', firstName: 'Robot'),
-        //         text: element.content,
-        //         createdAt: DateTime.now().millisecondsSinceEpoch,
-        //       ),
-        //     );
-        //   }
-
-        //   waitMessage = null;
-        // }
-
+        // 请求机器人应答
         types.TextMessage msg = types.TextMessage(
           id: waitMessage.id,
           author: const types.User(id: 'robot', firstName: 'Robot'),
